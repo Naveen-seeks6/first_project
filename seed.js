@@ -1286,12 +1286,13 @@ const settings = [
   ['restaurant_name', 'ARM Coffee Place'],
   ['tagline', "Let's relax • Kokapet"],
   ['upi_vpa', '7702971510@ybl'],
-  ['upi_merchant_name', 'ARM Coffee Place Kokapet'],
+  ['upi_merchant_name', 'Rupani Naveen Kumar'],
   ['tax_percent', '5'],
   ['currency_symbol', '₹'],
   ['contact_phone', '+91 77029 71510'],
   ['wifi_name', 'ARM_Coffee_Guest'],
-  ['wifi_pass', 'relax2026']
+  ['wifi_pass', 'relax2026'],
+  ['merchant_qr_image', '/merchant_qr.jpg']
 ];
 
 const insertSetting = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');

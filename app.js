@@ -865,8 +865,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Fetch live merchant settings (VPA, Merchant Name, Standee QR Image)
         let upiVpa = '7702971510@ybl';
-        let merchantNameStr = 'ARM Coffee Place Kokapet';
-        let customMerchantQrImage = null;
+        let merchantNameStr = 'Rupani Naveen Kumar';
+        let customMerchantQrImage = '/merchant_qr.jpg';
 
         try {
           const settingsRes = await fetch('/api/settings');

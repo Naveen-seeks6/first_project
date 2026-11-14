@@ -1517,8 +1517,9 @@ body {
 }
 
 .upi-qr-svg-wrap {
-  width: 190px;
-  height: 190px;
+  width: 220px;
+  min-height: 190px;
+  max-height: 380px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1526,8 +1527,8 @@ body {
 }
 
 .upi-qr-svg-wrap svg {
-  width: 100%;
-  height: 100%;
+  width: 190px;
+  height: 190px;
 }
 
 .upi-vpa-row {
@@ -1590,7 +1591,8 @@ body {
 
 .upi-qr-svg-wrap img {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 380px;
   object-fit: contain;
   border-radius: 8px;
 }
