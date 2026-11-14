@@ -927,6 +927,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingTagline = document.getElementById('settingTagline');
   const settingUpiVpa = document.getElementById('settingUpiVpa');
   const settingMerchantName = document.getElementById('settingMerchantName');
+  const settingPayuMode = document.getElementById('settingPayuMode');
+  const settingPayuKey = document.getElementById('settingPayuKey');
+  const settingPayuSalt = document.getElementById('settingPayuSalt');
   const settingTaxPercent = document.getElementById('settingTaxPercent');
   const settingCurrency = document.getElementById('settingCurrency');
   const settingContactPhone = document.getElementById('settingContactPhone');
@@ -987,6 +990,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (settingTagline) settingTagline.value = s.tagline || '';
       if (settingUpiVpa) settingUpiVpa.value = s.upi_vpa || '';
       if (settingMerchantName) settingMerchantName.value = s.upi_merchant_name || '';
+      if (settingPayuMode) settingPayuMode.value = s.payu_mode || 'test';
+      if (settingPayuKey) settingPayuKey.value = s.payu_merchant_key || '';
+      if (settingPayuSalt) settingPayuSalt.value = s.payu_merchant_salt || '';
       if (settingTaxPercent) settingTaxPercent.value = s.tax_percent || '5';
       if (settingCurrency) settingCurrency.value = s.currency_symbol || '₹';
       if (settingContactPhone) settingContactPhone.value = s.contact_phone || '';
@@ -1020,6 +1026,9 @@ document.addEventListener('DOMContentLoaded', () => {
         tagline: settingTagline ? settingTagline.value.trim() : '',
         upi_vpa: settingUpiVpa ? settingUpiVpa.value.trim() : '',
         upi_merchant_name: settingMerchantName ? settingMerchantName.value.trim() : '',
+        payu_mode: settingPayuMode ? settingPayuMode.value : 'test',
+        payu_merchant_key: settingPayuKey ? settingPayuKey.value.trim() : '',
+        payu_merchant_salt: settingPayuSalt ? settingPayuSalt.value.trim() : '',
         tax_percent: settingTaxPercent ? settingTaxPercent.value : '5',
         currency_symbol: settingCurrency ? settingCurrency.value.trim() : '₹',
         contact_phone: settingContactPhone ? settingContactPhone.value.trim() : '',

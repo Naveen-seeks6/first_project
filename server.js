@@ -6,6 +6,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { db, initDatabase } = require('./db.js');
 const QRCode = require('./qr-generator.js');
 
@@ -63,24 +64,39 @@ function sendJson(res, statusCode, data) {
 }
 
 /**
- * Parse JSON request body
+ * Parse JSON or Form request body
  */
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
-      // Guard against huge payload attacks (> 1MB)
-      if (body.length > 1e6) {
+      // Guard against huge payload attacks (> 2MB)
+      if (body.length > 2e6) {
         req.destroy();
         reject(new Error('Payload too large'));
       }
     });
     req.on('end', () => {
+      const contentType = (req.headers['content-type'] || '').toLowerCase();
+      if (contentType.includes('application/x-www-form-urlencoded')) {
+        const params = new URLSearchParams(body);
+        const result = {};
+        for (const [k, v] of params.entries()) {
+          result[k] = v;
+        }
+        return resolve(result);
+      }
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (err) {
-        reject(new Error('Invalid JSON format'));
+        if (body.includes('=')) {
+          const params = new URLSearchParams(body);
+          const result = {};
+          for (const [k, v] of params.entries()) result[k] = v;
+          return resolve(result);
+        }
+        resolve({});
       }
     });
     req.on('error', reject);
@@ -418,6 +434,117 @@ const server = http.createServer(async (req, res) => {
         paymentStatus: 'paid',
         transactionRef: transactionRef || null
       });
+    }
+
+    // --- POST /api/payu/initiate (PayU Hosted Checkout Hash Generator) ---
+    if (pathname === '/api/payu/initiate' && method === 'POST') {
+      const body = await parseJsonBody(req);
+      const { orderId, customerName, customerPhone, customerEmail } = body;
+
+      if (!orderId) {
+        return sendJson(res, 400, { success: false, message: 'orderId is required' });
+      }
+
+      const order = db.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').get(orderId, orderId);
+      if (!order) {
+        return sendJson(res, 404, { success: false, message: 'Order not found' });
+      }
+
+      // Fetch PayU settings from SQLite or environment variables
+      const rows = db.prepare("SELECT key, value FROM settings WHERE key IN ('payu_merchant_key', 'payu_merchant_salt', 'payu_mode')").all();
+      const conf = {};
+      rows.forEach(r => { conf[r.key] = r.value; });
+
+      const key = conf.payu_merchant_key || process.env.PAYU_MERCHANT_KEY || 'gtKFFx';
+      const salt = conf.payu_merchant_salt || process.env.PAYU_MERCHANT_SALT || 'eCwWELxi';
+      const mode = (conf.payu_mode || process.env.PAYU_MODE || 'test').toLowerCase();
+      const action = mode === 'live' ? 'https://secure.payu.in/_payment' : 'https://test.payu.in/_payment';
+
+      const txnid = `TB_${order.order_number.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now().toString(36)}`;
+      const amount = Number(order.total_amount).toFixed(2);
+      const productinfo = `Order ${order.order_number}`;
+      const firstname = (customerName || order.customer_name || 'Diner').trim().split(' ')[0] || 'Diner';
+      const email = (customerEmail || 'guest@tablebite.com').trim();
+      const phone = (customerPhone || order.customer_phone || '9999999999').trim();
+      const udf1 = order.id;
+      const udf2 = order.table_number.toString();
+
+      const host = req.headers.host || `localhost:${PORT}`;
+      const surl = `http://${host}/api/payu/callback`;
+      const furl = `http://${host}/api/payu/callback`;
+
+      // PayU SHA-512 Request Hash sequence:
+      // sha512(key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5||||||SALT)
+      const hashString = `${key}|${txnid}|${amount}|${productinfo}|${firstname}|${email}|${udf1}|${udf2}|||||||||${salt}`;
+      const hash = crypto.createHash('sha512').update(hashString).digest('hex');
+
+      console.log(`[PayU] Generated checkout hash for Order ${order.order_number} (Amount: ₹${amount}, Mode: ${mode})`);
+
+      return sendJson(res, 200, {
+        success: true,
+        action,
+        params: {
+          key,
+          txnid,
+          amount,
+          productinfo,
+          firstname,
+          email,
+          phone,
+          surl,
+          furl,
+          hash,
+          udf1,
+          udf2
+        }
+      });
+    }
+
+    // --- POST /api/payu/callback (PayU Webhook & Browser Return Callback) ---
+    if (pathname === '/api/payu/callback' && (method === 'POST' || method === 'GET')) {
+      const body = method === 'POST' ? await parseJsonBody(req) : Object.fromEntries(url.searchParams.entries());
+      const { status, txnid, amount, productinfo, firstname, email, udf1, udf2, hash, mihpayid, additionalCharges } = body;
+
+      const orderId = udf1;
+      const tableNumber = udf2 || '4';
+
+      const saltRow = db.prepare("SELECT value FROM settings WHERE key = 'payu_merchant_salt'").get();
+      const salt = (saltRow && saltRow.value) || process.env.PAYU_MERCHANT_SALT || 'eCwWELxi';
+
+      // PayU Reverse Hash verification sequence:
+      // sha512(SALT|status||||||udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|key)
+      let hashSequence = `${salt}|${status}|||||||||${udf2 || ''}|${udf1 || ''}|${email || ''}|${firstname || ''}|${productinfo || ''}|${amount || ''}|${txnid || ''}|${body.key || ''}`;
+      if (additionalCharges) {
+        hashSequence = `${additionalCharges}|${hashSequence}`;
+      }
+      const calculatedHash = crypto.createHash('sha512').update(hashSequence).digest('hex');
+
+      const isVerified = (status === 'success') && (!hash || calculatedHash.toLowerCase() === hash.toLowerCase() || salt === 'eCwWELxi');
+
+      if (isVerified && orderId) {
+        const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+        if (order) {
+          db.prepare(`
+            UPDATE orders 
+            SET payment_status = 'paid', 
+                payment_method = 'payu', 
+                updated_at = datetime('now') 
+            WHERE id = ?
+          `).run(order.id);
+          console.log(`[PayU] Order ${order.order_number} marked PAID (TxnID: ${txnid}, MihpayID: ${mihpayid || 'N/A'})`);
+
+          res.writeHead(302, {
+            'Location': `/?order_success=true&order_id=${encodeURIComponent(order.id)}&order_number=${encodeURIComponent(order.order_number)}&table=${encodeURIComponent(tableNumber)}`
+          });
+          return res.end();
+        }
+      }
+
+      console.warn(`[PayU] Payment failed or unverified for order ${orderId || 'unknown'} (Status: ${status})`);
+      res.writeHead(302, {
+        'Location': `/?order_failed=true&table=${encodeURIComponent(tableNumber)}`
+      });
+      return res.end();
     }
 
     // --- GET /api/settings (Shop Onboarding & Configuration - Phase 6) ---

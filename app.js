@@ -51,6 +51,30 @@ document.addEventListener('DOMContentLoaded', () => {
   renderMenu();
   updateCartUI();
   loadMenuFromBackend();
+  checkPayuReturn();
+
+  function checkPayuReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('order_success') === 'true' && params.get('order_id')) {
+      const successOrderId = params.get('order_id');
+      const successOrderNumber = params.get('order_number') || `#TB-${successOrderId.slice(-4)}`;
+      cart = [];
+      saveCartToStorage();
+      updateCartUI();
+      setTimeout(() => {
+        launchOrderTracker('Online Diner', 'payu', successOrderNumber, successOrderId);
+        showToast('✓ PayU payment received! Your food is being prepared.');
+        const cleanUrl = window.location.pathname + (activeTable ? `?table=${activeTable}` : '');
+        window.history.replaceState({}, document.title, cleanUrl);
+      }, 400);
+    } else if (params.get('order_failed') === 'true') {
+      setTimeout(() => {
+        showToast('⚠️ PayU payment was cancelled or failed. Please try again.');
+        const cleanUrl = window.location.pathname + (activeTable ? `?table=${activeTable}` : '');
+        window.history.replaceState({}, document.title, cleanUrl);
+      }, 400);
+    }
+  }
 
   async function loadMenuFromBackend() {
     try {
@@ -911,7 +935,49 @@ document.addEventListener('DOMContentLoaded', () => {
           total: grandTotal
         };
 
-        if (selectedMethod === 'upi_qr' || selectedMethod === 'upi_intent') {
+        if (selectedMethod === 'payu') {
+          // PayU Hosted Checkout redirect flow
+          confirmOrderBtnText.textContent = 'Redirecting to PayU...';
+          try {
+            const payuRes = await fetch('/api/payu/initiate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: orderId,
+                customerName: nameInput.value.trim(),
+                customerPhone: phoneVal,
+                customerEmail: 'guest@tablebite.com'
+              })
+            });
+            const payuData = await payuRes.json();
+            if (payuData.success && payuData.action && payuData.params) {
+              const form = document.createElement('form');
+              form.method = 'POST';
+              form.action = payuData.action;
+              form.style.display = 'none';
+
+              Object.entries(payuData.params).forEach(([k, v]) => {
+                const hiddenField = document.createElement('input');
+                hiddenField.type = 'hidden';
+                hiddenField.name = k;
+                hiddenField.value = v;
+                form.appendChild(hiddenField);
+              });
+
+              document.body.appendChild(form);
+              form.submit();
+              return;
+            } else {
+              showToast(payuData.message || 'Error initiating PayU checkout');
+              confirmOrderBtn.disabled = false;
+              confirmOrderBtnText.textContent = `Pay • ₹${grandTotal}`;
+            }
+          } catch (err) {
+            showToast('Unable to connect to PayU gateway');
+            confirmOrderBtn.disabled = false;
+            confirmOrderBtnText.textContent = `Pay • ₹${grandTotal}`;
+          }
+        } else if (selectedMethod === 'upi_qr' || selectedMethod === 'upi_intent') {
           if (upiAmountValue) upiAmountValue.textContent = `₹${grandTotal}`;
 
           if (upiQrContainer) {
@@ -1045,6 +1111,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const paymentLabel = paymentMethod === 'cash_counter'
       ? `<span style="color:#f59e0b; font-weight:700;">⏳ Pay ₹${grandTotal} at Cash Counter</span>`
+      : paymentMethod === 'payu'
+      ? `<span style="color:#10b981; font-weight:700;">✓ Paid via PayU Gateway (Verified)</span>`
       : `<span style="color:#10b981; font-weight:700;">✓ Paid via UPI (Instant Verified)</span>`;
 
     trackerItemsCard.innerHTML = `

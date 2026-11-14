@@ -126,7 +126,10 @@ function initDatabase() {
       ['contact_phone', '+91 77029 71510'],
       ['wifi_name', 'ARM_Coffee_Guest'],
       ['wifi_pass', 'relax2026'],
-      ['merchant_qr_image', '/merchant_qr.jpg']
+      ['merchant_qr_image', '/merchant_qr.jpg'],
+      ['payu_mode', 'test'],
+      ['payu_merchant_key', 'gtKFFx'],
+      ['payu_merchant_salt', 'eCwWELxi']
     ];
     const insertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
     defaultSettings.forEach(([k, v]) => insertSetting.run(k, v));

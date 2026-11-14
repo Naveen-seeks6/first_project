@@ -1517,18 +1517,20 @@ body {
 }
 
 .upi-qr-svg-wrap {
-  width: 220px;
-  min-height: 190px;
-  max-height: 380px;
+  width: 210px;
+  height: 210px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #ffffff;
 }
 
-.upi-qr-svg-wrap svg {
-  width: 190px;
-  height: 190px;
+.upi-qr-svg-wrap svg,
+.upi-qr-svg-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
 .upi-vpa-row {
@@ -1587,14 +1589,6 @@ body {
   0% { transform: scale(0.95); opacity: 0.8; }
   50% { transform: scale(1.15); opacity: 1; }
   100% { transform: scale(0.95); opacity: 0.8; }
-}
-
-.upi-qr-svg-wrap img {
-  width: 100%;
-  height: auto;
-  max-height: 380px;
-  object-fit: contain;
-  border-radius: 8px;
 }
 
 .upi-direct-apps-title {

@@ -455,6 +455,28 @@
           </div>
 
           <div class="settings-section">
+            <h3 class="settings-sec-title">💳 PayU Payment Gateway Integration</h3>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="settingPayuMode" class="form-label">PayU Environment Mode</label>
+                <select id="settingPayuMode" class="form-control">
+                  <option value="test">Test / Sandbox (test.payu.in)</option>
+                  <option value="live">Live / Production (secure.payu.in)</option>
+                </select>
+              </div>
+              <div class="form-group flex-2">
+                <label for="settingPayuKey" class="form-label">PayU Merchant Key</label>
+                <input type="text" id="settingPayuKey" class="form-control" placeholder="e.g. gtKFFx (PayU Key)">
+              </div>
+              <div class="form-group flex-2">
+                <label for="settingPayuSalt" class="form-label">PayU Merchant Salt</label>
+                <input type="password" id="settingPayuSalt" class="form-control" placeholder="e.g. eCwWELxi (PayU Salt)">
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Enter your PayU API credentials from your PayU Dashboard. Supports all Credit/Debit Cards, NetBanking, Wallets, and UPI.</p>
+          </div>
+
+          <div class="settings-section">
             <h3 class="settings-sec-title">📶 Guest Hospitality &amp; Wi-Fi</h3>
             <div class="form-row">
               <div class="form-group flex-2">
