@@ -1,0 +1,32 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Local databases and SQLite sidecars
+*.sqlite
+*.sqlite3
+*.db
+*-wal
+*-shm
+
+# Logs and runtime files
+*.log
+logs/
+tmp/
+temp/
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+playwright-report/
+test-results/
